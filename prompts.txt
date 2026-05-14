@@ -1,0 +1,258 @@
+================================================================================
+ALL PROMPTS USED TO GENERATE / DEBUG / IMPROVE THIS PROJECT
+================================================================================
+
+(1) PRIMARY USER PROMPT (verbatim request for the assessment project)
+--------------------------------------------------------------------------------
+You are an expert Python automation engineer.
+
+Create a complete Playwright Python project for the following technical assessment.
+
+Project Name:
+Audio Bee – Data Extraction Intern Practical Test
+
+Target Website:
+https://ekantipur.com
+
+Requirements:
+
+TASK 1:
+Navigate to the Entertainment section (मनो रञ्जन) and extract the TOP 5 news articles.
+
+Extract these fields:
+
+1. title
+2. image_url
+3. category
+4. author
+
+Rules:
+
+* image_url must be a FULL URL
+* if author is missing, return null
+* category should contain the section/category label
+* use stable selectors
+* avoid fragile deeply nested selectors
+
+TASK 2:
+Extract the “Cartoon of the Day” section (व्यंग्यचित्र).
+
+Extract:
+
+1. title
+2. image_url
+3. author
+
+OUTPUT FORMAT:
+Generate output.json in this structure:
+
+{
+"entertainment_news": [
+{
+"title": "",
+"image_url": "",
+"category": "",
+"author": ""
+}
+],
+"cartoon_of_the_day": {
+"title": "",
+"image_url": "",
+"author": ""
+}
+}
+
+TECHNICAL REQUIREMENTS:
+
+* Use Python
+* Use Playwright
+* Use sync_playwright
+* Add comments throughout the code
+* Use error handling
+* Handle missing elements safely
+* Use helper function for full URLs
+* Use wait_until='networkidle'
+* Use clean and readable code
+* Browser should launch with:
+  headless=False
+
+VERY IMPORTANT:
+Generate the COMPLETE project structure exactly like this:
+
+project/
+├── scraper.py
+├── output.json
+├── pyproject.toml
+├── prompts.txt
+
+FILE REQUIREMENTS:
+
+1. scraper.py
+
+* Complete working scraper
+* Clean code
+* Comments explaining each section
+
+2. output.json
+
+* Example generated output with realistic data structure
+
+3. pyproject.toml
+
+* Include all dependencies properly
+* Python version included
+
+4. prompts.txt
+
+* Include ALL prompts used to generate/debug/improve this project
+
+ALSO INCLUDE:
+
+* installation commands
+* how to run commands
+* explanation of selectors used
+* explanation of why selectors are stable
+* common debugging tips
+* explanation suitable for screen recording voiceover
+
+ADDITIONAL REQUIREMENTS:
+
+* Make the scraper robust against missing elements
+* Ensure UTF-8 Nepali text support
+* Use JSON dump with ensure_ascii=False
+* Make code beginner friendly
+* Add print statements for debugging/logging
+* Ensure output.json is automatically generated after script execution
+
+IMPORTANT:
+Return the FULL code for every file separately and clearly labeled.
+
+(2) INTERNAL / DEBUGGING PROMPTS (implicit goals while implementing)
+--------------------------------------------------------------------------------
+- Identify stable DOM patterns for ekantipur.com listing pages without relying on
+  extremely deep CSS paths.
+- Cross-check Kantipur channel markup conventions with public parsers (RSSHub
+  `lib/routes/ekantipur/issue.ts`) for repeatable story-card selectors.
+- Prefer navigation that clicks the real “मनोरञ्जन” menu item, with a safe fallback
+  to the canonical `/entertainment` URL if the menu changes.
+- Keep `networkidle` as requested, but use realistic timeouts because ad/analytics
+  traffic can delay “network idle” on news portals.
+- Ensure JSON uses UTF-8 and `ensure_ascii=False` so Nepali text is readable.
+- Dump live HTML with Playwright (`page.content()`) when selectors drift; verify whether
+  the portal still uses legacy `article.normal` cards or the newer `.category` rows.
+
+================================================================================
+INSTALLATION COMMANDS (Windows PowerShell)
+================================================================================
+
+cd project
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+pip install .
+playwright install chromium
+
+Notes:
+- `pip install .` reads `pyproject.toml` and installs the Playwright dependency for this folder.
+- `playwright install chromium` downloads the browser binary Playwright controls.
+
+================================================================================
+HOW TO RUN
+================================================================================
+
+The scraper file is ONLY `project/scraper.py`. There is no `scraper.py` at the repository
+root by design—always run one of the following.
+
+A) Recommended (from inside `project/`):
+
+cd project
+python scraper.py
+
+B) From the parent folder (e.g. `ekantipur_data_extraction` one level above `project/`):
+
+python project/scraper.py
+
+(Using `python scraper.py` from the parent folder will fail because Python looks for a
+file named `scraper.py` in the current directory, which does not exist there.)
+
+What you should see:
+- A Chromium window opens (headless=False).
+- Console logs prefixed with [nav], [task1], [task2], [io], [browser].
+- `output.json` is overwritten at the end of the run (even if scraping partially fails).
+
+================================================================================
+SELECTORS USED (AND WHY THEY ARE STABLE)
+================================================================================
+
+Entertainment listing (Task 1)
+- `div.category-main-wrapper div.category-wrapper > div.category`
+  - Each entertainment row is a `.category` block with a text column (`.category-description`)
+    and an image column (`.category-image`). This maps to the visible homepage/listing UX
+    and avoids ultra-deep `div > div > …` positional selectors.
+
+Title + URL
+- `.category-description h2 a`
+  - The headline is consistently an `h2` link on the 2026 template.
+
+Author (optional)
+- `div.author-name`
+  - When present, it contains the byline (sometimes multiple links). If missing/empty → JSON `null`.
+
+Images
+- `.category-image img` with `src` / `data-src` / `data-original`
+  - Thumbnails are often absolute `thumb.php` URLs; we still normalize relative URLs when needed.
+
+Cartoon widget (Task 2)
+- `section.e-section` that contains `div.cartoon-slider`
+  - The live homepage labels the module “कार्टुन” and uses Swiper (`.swiper-slide-active`).
+- Fallback: visible text containing “व्यंग्यचित्र” + nearest ancestor that contains an `<img>`
+  - This keeps the script useful if the homepage module is renamed again.
+
+================================================================================
+COMMON DEBUGGING TIPS (PLAYWRIGHT + NEWS SITES)
+================================================================================
+
+1) `networkidle` timeouts
+   - News sites load ads, trackers, and streaming beacons for a long time.
+   - This project aborts a small set of known tracking hosts so Chromium can reach
+     `networkidle` more reliably without changing the editorial markup.
+   - If you still time out, temporarily add `page.pause()` for interactive debugging (remove
+     for automation).
+
+2) Use Playwright Inspector
+   - `PWDEBUG=1 python scraper.py` (environment dependent) opens stepping tools so you
+     can see which locator resolves to which element.
+
+3) Prefer role-based locators for navigation
+   - `get_by_role("link", name=...)` tracks accessible names, which often survive CSS churn.
+
+4) Bot / 403 issues with raw HTTP clients
+   - Plain `urllib` calls may get blocked while real Chromium succeeds; this is why the
+     scraper sets a conventional desktop User-Agent.
+
+5) Nepali text “looks wrong” in some editors
+   - Always open `output.json` as UTF-8. The script writes UTF-8 explicitly.
+
+================================================================================
+SCREEN-RECORDING VOICEOVER (SHORT SCRIPT YOU CAN READ)
+================================================================================
+
+“I’m demonstrating a small data extraction task for ekantipur.com using Playwright in
+Python. The script launches a real Chromium window so we can see exactly what a user sees.
+
+First, we open the homepage and navigate to the Entertainment section by clicking the
+menu link when possible. That mirrors a human workflow and is resilient to small URL
+changes, but we still keep a fallback direct URL.
+
+On the entertainment channel page, we collect the first five story rows. Each row is a
+`.category` block inside `.category-wrapper`, which is a stable repeating pattern on the
+current template. From each row we read the `h2` headline link, optional `.author-name`
+byline, and the `.category-image` thumbnail URL, converting relative URLs into full URLs.
+
+Next, we return to the homepage. The cartoon module is usually the `कार्टुन` carousel
+(`.cartoon-slider`). We read the Swiper active slide, take the cartoon image URL, and use
+the image `alt` as a practical title surrogate when no separate caption exists. If the
+homepage copy changes back to `व्यंग्यचित्र`, the script still has a text-anchor fallback.
+
+Finally, we write `output.json` using UTF-8 and `ensure_ascii=False` so Nepali text is
+stored naturally, and we print logs along the way so it’s easy to follow what happened.”
